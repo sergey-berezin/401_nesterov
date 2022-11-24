@@ -34,3 +34,5 @@ cd ConsoleApp && dotnet add package FaceEmbeddingsAsync --version 1.0.7 && dotne
 ```
 cd WindowApp && dotnet add package FaceEmbeddingsAsync --version 1.0.7 && dotnet run
 ```
+
+Добавлена возможность сохранять уже посчитанные эмбеддинги лиц в базу данных, работающую на SQLite.
