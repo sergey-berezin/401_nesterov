@@ -1,33 +1,33 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
-using SixLabors.ImageSharp;
+using System.Windows.Controls;
+using System.Windows.Media.Imaging;
+
+using Microsoft.EntityFrameworkCore;
 using SixLabors.ImageSharp.PixelFormats;
 
 using FaceEmbeddingsAsync;
 using static FaceEmbeddingsAsync.Utils;
-using System.Windows.Controls;
-using System.Windows.Media.Imaging;
-using System.Threading.Tasks;
-using System;
-using System.IO;
-using System.Linq;
 
 
 namespace WindowApp
 {
     public partial class MainWindow : Window
     {
-        private List<string> paths = new List<string>();
-        private List<Image<Rgb24>> images = new List<Image<Rgb24>>();
+        private List<Image> images = new List<Image>();
         private CancellationTokenSource token_src;
         private CancellationToken token;
-        private bool calculations_status;
+        private bool calculations_started = false;
 
         AsyncInferenceSession session = new AsyncInferenceSession();
 
-        private string files_filter = "Images (*.jpg, *.png)|*.jpg;*.png";
-        private string images_dir = Path.GetFullPath("../../../../images");
+        private readonly string files_filter = "Images (*.jpg, *.png)|*.jpg;*.png";
+        private readonly string images_dir = Path.GetFullPath("../../../../images");
 
         public MainWindow()
         {
@@ -50,12 +50,16 @@ namespace WindowApp
             if (response == null || response == false)
                 return;
 
-            foreach (var path in ofd.FileNames) 
+            var imageDetails = ofd.FileNames.Select(path => new ImageDetails
             {
-                var face = SixLabors.ImageSharp.Image.Load<Rgb24>(path);
-                images.Add(face);
-                paths.Add(path);
-            }
+                Data = File.ReadAllBytes(path)
+            });
+
+            images = ofd.FileNames.Zip(imageDetails, (path, details) => new Image { 
+                Name = path,
+                Details = details,
+                Hash = Utils.Hash(details.Data)
+            }).ToList();
 
             DrawGrid();
         }
@@ -63,12 +67,11 @@ namespace WindowApp
         private void DrawGrid()
         {
             AddUnitGrid();
-            foreach (var (path, i) in paths.Select((x, i) => (x, i))) 
+            foreach (var (image, i) in images.Select((x, i) => (x, i)))
             {
                 AddUnitGrid();
 
-                var uri = new Uri(path);
-                var bitmap = new BitmapImage(uri);
+                var bitmap = Utils.ByteToBitmap(image.Details.Data);
 
                 PutImageOnGrid(bitmap, 0, i + 1);
                 PutImageOnGrid(bitmap, i + 1, 0);
@@ -90,8 +93,10 @@ namespace WindowApp
 
         public void PutImageOnGrid(BitmapImage bitmap, int col, int row)
         {
-            var image = new System.Windows.Controls.Image();
-            image.Source = bitmap;
+            var image = new System.Windows.Controls.Image
+            {
+                Source = bitmap
+            };
             Grid.SetColumn(image, col);
             Grid.SetRow(image, row);
             table.Children.Add(image);
@@ -100,7 +105,8 @@ namespace WindowApp
         public void ClearGrid()
         {
             ResetToken();
-            ResetPbar();
+            calculations_started = false;
+            ReserPbar();
 
             if (!images.Any())
                 return;
@@ -109,8 +115,104 @@ namespace WindowApp
             table.RowDefinitions.Clear();
             table.ColumnDefinitions.Clear();
 
-            paths.Clear();
             images.Clear();
+        }
+
+        private float[]?[] RetrieveEmbeddingsFromDb(List<Image> query_images)
+        {
+            var hashes = query_images.Select(image => Utils.Hash(image.Details.Data)).ToArray();
+
+            var retrievedEmbeddings = new List<float[]?>();
+            using (var db = new ImagesContext())
+            {
+                foreach (var (hash, image) in hashes.Zip(query_images))
+                {
+                    var q = db.Images
+                        .Where(x => x.Hash == hash)
+                        .Include(x => x.Details)
+                        .Where(x => Equals(x.Details.Data, image.Details.Data))
+                        .FirstOrDefault();
+
+                    retrievedEmbeddings.Add(Utils.ByteToFloat(q?.Embedding));
+                }
+            }
+            return retrievedEmbeddings.ToArray();
+        }
+
+        private Task<float[]>[] CreateTasks(List<Image> query_images)
+        {
+            var retrievedEmbeddings = RetrieveEmbeddingsFromDb(query_images);
+
+            return retrievedEmbeddings.Zip(query_images, (retrieved_embedding, query) =>
+            {
+                if (retrieved_embedding != null)
+                    return Task.FromResult(retrieved_embedding);
+
+                return session.EmbeddingsAsync(
+                    SixLabors.ImageSharp.Image.Load<Rgb24>(query.Details.Data),
+                    token
+                );
+            }).ToArray();
+        }
+
+        private void SaveEmbedding(byte[] embedding, Image image)
+        {
+            using (var db = new ImagesContext())
+            {
+                var q = db.Images
+                    .Where(x => x.Hash == image.Hash)
+                    .Include(x => x.Details)
+                    .Where(x => Equals(x.Details.Data, image.Details.Data))
+                    .FirstOrDefault();
+
+                if (q == null)
+                {
+                    ImageDetails newDetails = new ImageDetails
+                    {
+                        Data = image.Details.Data
+                    };
+                    Image newImage = new Image
+                    {
+                        Name = image.Name,
+                        Embedding = embedding,
+                        Details = newDetails,
+                        Hash = image.Hash
+                    };
+
+                    db.Images.Add(newImage);
+                    db.Details.Add(newDetails);
+                } 
+                else if (embedding != null)
+                {
+                    image.Embedding = embedding;
+                }
+
+                db.SaveChanges();
+            }
+        }
+
+        private async Task ProcessImagesAsync(List<Image> query_images, double step)
+        {
+            var tasks = CreateTasks(query_images);
+
+            try
+            {
+                foreach (var (task, image) in tasks.Zip(query_images))
+                {
+                    var res_embedding = await task;
+
+                    if (token.IsCancellationRequested)
+                        break;
+
+                    UpdatePbar(step);
+
+                    var embedding = Utils.FloatToByte(res_embedding);
+                    SaveEmbedding(embedding, image);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
         }
 
         private async void ButtonStart(object sender, RoutedEventArgs e)
@@ -121,23 +223,13 @@ namespace WindowApp
                 return;
             }
 
-            if (calculations_status) 
+            if (calculations_started) 
                 return;
 
-            calculations_status = true;
-
-            var tasks = new List<Task>();
-            foreach (var image in images)
-                tasks.Add(session.EmbeddingsAsync(image, token));
+            calculations_started = true;
 
             double step = pbar.Maximum / (2 * images.Count);
-            while (tasks.Any()) 
-            {
-                var task = await Task.WhenAny(tasks);
-                if (!token.IsCancellationRequested)
-                    UpdatePbar(step);
-                tasks.Remove(task);
-            }
+            await ProcessImagesAsync(images, step);
 
             step = pbar.Maximum / (2 * images.Count * images.Count);
             for (int i = 0; i < images.Count; ++i) 
@@ -158,14 +250,11 @@ namespace WindowApp
                         continue;
                     }
 
-                    var task1 = session.EmbeddingsAsync(images[i], token);
-                    var task2 = session.EmbeddingsAsync(images[j], token);
+                    var img_list = new List<Image> { images[i], images[j] };
+                    var embeddings = RetrieveEmbeddingsFromDb(img_list);
 
-                    var embeddings1 = await task1;
-                    var embeddings2 = await task2;
-
-                    var dist = Distance(embeddings1, embeddings2);
-                    var sim = Similarity(embeddings1, embeddings2);
+                    var dist = Distance(embeddings[0], embeddings[1]);
+                    var sim = Similarity(embeddings[0], embeddings[1]);
 
                     label.Content = $"Distance: {dist:0.00}\nSimilarity: {sim:0.00}";
                     UpdatePbar(step);
@@ -199,20 +288,25 @@ namespace WindowApp
         {
             token_src = new CancellationTokenSource();
             token = token_src.Token;
-            calculations_status = false;
         }
 
-        private void UpdatePbar(double step)
+        private void ButtonOpenDb(object sender, RoutedEventArgs e)
+        {
+            var storage = new StorageWindow();
+            storage.ShowDialog();
+        }
+
+        public void UpdatePbar(double step)
         {
             pbar.Value += step;
         }
 
-        private void CompletePbar()
+        public void CompletePbar()
         {
             pbar.Value = pbar.Maximum;
         }
 
-        private void ResetPbar()
+        public void ReserPbar()
         {
             pbar.Value = 0;
         }
