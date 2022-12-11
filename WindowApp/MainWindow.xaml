@@ -37,12 +37,20 @@
                     Height="40">Open database</Button>
 
             <ProgressBar Grid.Row="0" Grid.Column="5" Minimum="0" Maximum="100" 
-                         Name="pbar" Height="40" Margin="10,15,10,15"/>
+                         Name="pbarEmbeddings" Margin="10,15,10,35"/>
             <TextBlock Grid.Row="0" Grid.Column="5" 
-                       Text="{Binding ElementName=pbar, Path=Value, 
+                       Text="{Binding ElementName=pbarEmbeddings, Path=Value, 
                                 StringFormat={}{0:0} / 100%}"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" 
-                       RenderTransformOrigin="0.022,0.753"/>
+                       HorizontalAlignment="Center" VerticalAlignment="Top" 
+                       RenderTransformOrigin="0.022,0.753" Margin="0,17,0,0"/>
+ 
+            <ProgressBar Grid.Row="0" Grid.Column="5" Minimum="0" Maximum="100" 
+                x:Name="pbarPairwise" Margin="10,40,10,10"/>
+            <TextBlock Grid.Row="0" Grid.Column="5" 
+                       Text="{Binding ElementName=pbarPairwise, Path=Value,
+                                StringFormat=\{0:0\} / 100%}"
+                       HorizontalAlignment="Center" VerticalAlignment="Top" 
+                       RenderTransformOrigin="0.022,0.753" Margin="0,40,0,0"/>
         </Grid>
 
         <Grid Grid.Row="1" x:Name="table" VerticalAlignment="Stretch" 

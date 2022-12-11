@@ -4,11 +4,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Windows.Media.Imaging;
 
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Advanced;
-using SixLabors.ImageSharp.Formats;
-using SixLabors.ImageSharp.PixelFormats;
-
 
 namespace WindowApp
 {
@@ -29,23 +24,24 @@ namespace WindowApp
             using var ms = new MemoryStream(array);
             var image = new BitmapImage();
             image.BeginInit();
-            image.CacheOption = BitmapCacheOption.OnLoad; // here
+            image.CacheOption = BitmapCacheOption.OnLoad;
             image.StreamSource = ms;
             image.EndInit();
             return image;
         }
 
-        public static float[]? ByteToFloat(byte[]? array)
+        public static float[] ByteToFloat(byte[] array)
         {
             if (array == null)
                 return null;
+
             var len = array.Length;
             var float_array = new float[len / 4];
             Buffer.BlockCopy(array, 0, float_array, 0, len);
             return float_array;
         }
 
-        public static byte[]? FloatToByte(float[]? array)
+        public static byte[] FloatToByte(float[] array)
         {
             if (array == null)
                 return null;
