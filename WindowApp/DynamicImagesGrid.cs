@@ -1,14 +1,29 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 
-using static FaceEmbeddingsAsync.Utils;
+using Contracts;
 
 
 namespace WindowApp
 {
+    public static class DrawUtils
+    {
+        public static BitmapImage ByteToBitmap(byte[] array)
+        {
+            using var ms = new MemoryStream(array);
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.StreamSource = ms;
+            image.EndInit();
+            return image;
+        }
+    }
+
     public class DynamicImagesGrid
     {
         private readonly Grid grid;
@@ -42,14 +57,14 @@ namespace WindowApp
             grid.Children.Add(image);
         }
 
-        public void PutLabel(float[] embedding_i, int col, float[] embedding_j, int row, bool is_empty)
+        public void PutLabel(int col, int row, Dictionary<string, object> metrics, bool is_empty)
         {
             var label = new Label()
             {
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 FontSize = 12,
-                Content = GetLabelContent(embedding_i, embedding_j, is_empty)
+                Content = GetLabelContent(metrics, is_empty)
             };
 
             grid.Children.Add(label);
@@ -57,25 +72,26 @@ namespace WindowApp
             Grid.SetRow(label, row);
         }
 
-        private static string GetLabelContent(float[] embedding_first, float[] embedding_second, bool is_empty)
+        private static string GetLabelContent(Dictionary<string, object> metrics, bool is_empty)
         {
             if (is_empty)
                 return "<Empty>";
 
-            var dist = Distance(embedding_first, embedding_second);
-            var sim = Similarity(embedding_first, embedding_second);
+            var metrics_str = new List<string>();
+            foreach (var item in metrics)
+                metrics_str.Add($"{item.Key}: " + $"{item.Value:f3}");
 
-            return $"Distance: {dist:0.00}\nSimilarity: {sim:0.00}";
+            return string.Join("\n", metrics_str);
         }
 
-        public void Draw(IEnumerable<Image> images)
+        public void Draw(IEnumerable<ImageDetails> imagesDetails)
         {
             AddUnit();
-            foreach (var (image, i) in images.Select((x, i) => (x, i)))
+            foreach (var (detail, i) in imagesDetails.Select((x, i) => (x, i)))
             {
                 AddUnit();
 
-                var bitmap = Utils.ByteToBitmap(image.Details.Data);
+                var bitmap = DrawUtils.ByteToBitmap(detail.Data);
 
                 PutImage(bitmap, 0, i + 1);
                 PutImage(bitmap, i + 1, 0);

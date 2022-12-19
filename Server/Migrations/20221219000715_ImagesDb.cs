@@ -2,10 +2,10 @@
 
 #nullable disable
 
-namespace WindowApp.Migrations
+namespace Server.Migrations
 {
     /// <inheritdoc />
-    public partial class ImageStorage : Migration
+    public partial class ImagesDb : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -16,6 +16,7 @@ namespace WindowApp.Migrations
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
+                    Name = table.Column<string>(type: "TEXT", nullable: false),
                     Data = table.Column<byte[]>(type: "BLOB", nullable: false)
                 },
                 constraints: table =>
@@ -29,9 +30,8 @@ namespace WindowApp.Migrations
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", nullable: false),
-                    Hash = table.Column<string>(type: "TEXT", nullable: false),
                     Embedding = table.Column<byte[]>(type: "BLOB", nullable: false),
+                    Hash = table.Column<string>(type: "TEXT", nullable: false),
                     DetailsId = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>

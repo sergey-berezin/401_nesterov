@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 using System.Windows;
 
-using Microsoft.EntityFrameworkCore;
+using Contracts;
 
 
 namespace WindowApp
@@ -14,44 +13,40 @@ namespace WindowApp
     /// </summary>
     public partial class StorageWindow : Window
     {
-        public ObservableCollection<Image> Images { get; private set; }
-        public StorageWindow()
+        public ObservableCollection<ImageDetails> Details { get; private set; }
+        private readonly Service service;
+        public StorageWindow(Service service)
         {
-            Images = new ObservableCollection<Image>();
-
-            using (var db = new ImagesContext())
-            {
-                foreach (var image in db.Images)
-                    Images.Add(image);
-            }
+            this.service = service;
+            Details = new();
+            LoadImages();
 
             InitializeComponent();
             DataContext = this;
         }
 
-        private void ButtonDelete(object sender, RoutedEventArgs e)
+        private async void LoadImages()
         {
-            if (!Images.Any())
+            var images = await service.GetImages();
+            if (images == null)
+                return;
+
+            foreach (var details in images)
+                Details.Add(details);
+        }
+
+        private async void ButtonDelete(object sender, RoutedEventArgs e)
+        {
+            if (!Details.Any())
                 return;
 
             try
             {
-                var image = Images[ImagesListBox.SelectedIndex];
-                using (var db = new ImagesContext())
-                {
-                    var deletedImage = db.Images
-                        .Where(x => x.Id == image.Id)
-                        .Include(x => x.Details)
-                        .First();
+                var image = Details[ImagesListBox.SelectedIndex];
+                var success = await service.DeleteImageById(image.Id);
 
-                    if (deletedImage == null)
-                        return;
-
-                    db.Details.Remove(deletedImage.Details);
-                    db.Images.Remove(deletedImage);
-                    db.SaveChanges();
-                }
-                Images.Remove(image);
+                if (success)
+                    Details.Remove(image);
             }
             catch (Exception ex)
             {
@@ -59,18 +54,14 @@ namespace WindowApp
             }
         }
 
-        private void ButtonClear(object sender, RoutedEventArgs e)
+        private async void ButtonClear(object sender, RoutedEventArgs e)
         {
-            if (!Images.Any())
+            if (!Details.Any())
                 return;
 
-            using (var db = new ImagesContext())
-            {
-                db.Clear();
-                db.SaveChanges();
-            }
-
-            Images.Clear();
+            var success = await service.Clear();
+            if (success)
+                Details.Clear();
         }
     }
 }

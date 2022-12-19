@@ -10,7 +10,7 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="70"/>
         </Grid.RowDefinitions>
-        <ListBox Name="ImagesListBox" ItemsSource="{Binding Images}" Margin="5" Grid.Row="0">
+        <ListBox Name="ImagesListBox" ItemsSource="{Binding Details}" Margin="5" Grid.Row="0">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal">

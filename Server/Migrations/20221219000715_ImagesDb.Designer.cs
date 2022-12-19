@@ -3,15 +3,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using WindowApp;
+using Server;
 
 #nullable disable
 
-namespace WindowApp.Migrations
+namespace Server.Migrations
 {
     [DbContext(typeof(ImagesContext))]
-    [Migration("20221123170258_ImageStorage")]
-    partial class ImageStorage
+    [Migration("20221219000715_ImagesDb")]
+    partial class ImagesDb
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -19,7 +19,7 @@ namespace WindowApp.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "7.0.0");
 
-            modelBuilder.Entity("WindowApp.Image", b =>
+            modelBuilder.Entity("Contracts.Image", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -36,10 +36,6 @@ namespace WindowApp.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
 
                     b.HasIndex("DetailsId");
@@ -47,7 +43,7 @@ namespace WindowApp.Migrations
                     b.ToTable("Images");
                 });
 
-            modelBuilder.Entity("WindowApp.ImageDetails", b =>
+            modelBuilder.Entity("Contracts.ImageDetails", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -57,14 +53,18 @@ namespace WindowApp.Migrations
                         .IsRequired()
                         .HasColumnType("BLOB");
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.ToTable("Details");
                 });
 
-            modelBuilder.Entity("WindowApp.Image", b =>
+            modelBuilder.Entity("Contracts.Image", b =>
                 {
-                    b.HasOne("WindowApp.ImageDetails", "Details")
+                    b.HasOne("Contracts.ImageDetails", "Details")
                         .WithMany()
                         .HasForeignKey("DetailsId")
                         .OnDelete(DeleteBehavior.Cascade)
