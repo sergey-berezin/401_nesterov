@@ -5,7 +5,7 @@
 namespace Server.Migrations
 {
     /// <inheritdoc />
-    public partial class ImagesDb : Migration
+    public partial class Images : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -31,6 +31,7 @@ namespace Server.Migrations
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     Embedding = table.Column<byte[]>(type: "BLOB", nullable: false),
+                    HasEmbedding = table.Column<bool>(type: "INTEGER", nullable: false),
                     Hash = table.Column<string>(type: "TEXT", nullable: false),
                     DetailsId = table.Column<int>(type: "INTEGER", nullable: false)
                 },

@@ -29,6 +29,9 @@ namespace Server.Migrations
                         .IsRequired()
                         .HasColumnType("BLOB");
 
+                    b.Property<bool>("HasEmbedding")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Hash")
                         .IsRequired()
                         .HasColumnType("TEXT");

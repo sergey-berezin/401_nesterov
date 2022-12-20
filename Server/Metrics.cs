@@ -17,11 +17,11 @@
         public string Name { get; }
         public float? Value { get; }
         public IMetric Compute(PairVectors pair);
-        public Dictionary<string, object> ToDict()
+        public Dictionary<string, float?> ToValues()
         {
-            return new Dictionary<string, object>
+            return new Dictionary<string, float?>
             {
-                { Name, Value == null ? "<Undefined>" : Value },
+                { Name, Value }
             };
         }
     }

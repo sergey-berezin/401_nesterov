@@ -11,9 +11,9 @@
             return new MetricsList(this.Select(x => x.Compute(pair_embeddings)).ToList());
         }
 
-        public Dictionary<string, object> ToDict()
+        public Dictionary<string, float?> ToValues()
         {
-            return this.Select(x => x.ToDict())
+            return this.Select(x => x.ToValues())
             .SelectMany(dict => dict)
             .ToDictionary(g => g.Key, g => g.Value);
         }

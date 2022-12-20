@@ -10,8 +10,8 @@ using Server;
 namespace Server.Migrations
 {
     [DbContext(typeof(ImagesContext))]
-    [Migration("20221219000715_ImagesDb")]
-    partial class ImagesDb
+    [Migration("20221219231526_Images")]
+    partial class Images
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -31,6 +31,9 @@ namespace Server.Migrations
                     b.Property<byte[]>("Embedding")
                         .IsRequired()
                         .HasColumnType("BLOB");
+
+                    b.Property<bool>("HasEmbedding")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Hash")
                         .IsRequired()

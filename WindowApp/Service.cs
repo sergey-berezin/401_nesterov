@@ -2,14 +2,13 @@
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Polly;
 using Polly.Retry;
 
 using Contracts;
-using System.Windows;
+
 
 namespace WindowApp
 {
@@ -29,10 +28,7 @@ namespace WindowApp
                       + TimeSpan.FromMilliseconds(jitterer.Next(0, 1000)));
         }
 
-        public async Task<List<int>?> ProcessImagesAsync(
-            List<ImageDetails> images, 
-            CancellationToken token
-        )
+        public async Task<List<int>?> ProcessImagesAsync(List<ImageDetails> images)
         {
             HttpResponseMessage response = new();
             try
@@ -44,20 +40,44 @@ namespace WindowApp
                     };
 
                     var content = CreateImageContent(images);
-                    response = await client.PostAsync("images", content, token);
+                    response = await client.PostAsync("images", content);
                     response.EnsureSuccessStatusCode();
                 });
             }
             catch
             {
-                return new List<int>();
+                return null;
             }
 
-            var response_str = await response.Content.ReadAsStringAsync(token);
+            var response_str = await response.Content.ReadAsStringAsync();
             return JsonConvert.DeserializeObject<List<int>>(response_str);
         }
 
-        public async Task<Dictionary<string, object>?> Compare(int id1, int id2)
+        public async Task<bool> Cancel()
+        {
+            HttpResponseMessage response = new();
+            try
+            {
+                await retryPolicy.ExecuteAsync(async () => {
+                    using var client = new HttpClient()
+                    {
+                        BaseAddress = new Uri(serverAddress)
+                    };
+
+                    response = await client.GetAsync("cancel");
+                    response.EnsureSuccessStatusCode();
+                });
+            }
+            catch
+            {
+                return false;
+            }
+
+            var response_str = await response.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject<bool>(response_str);
+        }
+
+        public async Task<Dictionary<string, float?>?> Compare(int id1, int id2)
         {
             HttpResponseMessage response = new();
             try
@@ -72,15 +92,14 @@ namespace WindowApp
 
                     response.EnsureSuccessStatusCode();
                 });
-
-                var response_str = await response.Content.ReadAsStringAsync();
-                return JsonConvert.DeserializeObject<Dictionary<string, object>>(response_str);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"ClientCompare: {ex.Message}");
                 return null;
             }
+
+            var response_str = await response.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject<Dictionary<string, float?>>(response_str);
         }
 
         public async Task<List<ImageDetails>?> GetImages()

@@ -1,13 +1,10 @@
-﻿using System.Threading;
-
-
-namespace WindowApp
+﻿namespace Server
 {
     public class ReusableToken
     {
         private CancellationTokenSource token_src;
         public CancellationToken token;
-        
+
         public ReusableToken()
         {
             Reset();

@@ -27,6 +27,7 @@ namespace WindowApp
     public class DynamicImagesGrid
     {
         private readonly Grid grid;
+        private readonly string defaultLabel = "<Empty>";
 
         public DynamicImagesGrid(ref Grid grid)
         {
@@ -57,14 +58,14 @@ namespace WindowApp
             grid.Children.Add(image);
         }
 
-        public void PutLabel(int col, int row, Dictionary<string, object> metrics, bool is_empty)
+        public void PutLabel(int col, int row, Dictionary<string, float?>? metrics, bool is_cancelled)
         {
             var label = new Label()
             {
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 FontSize = 12,
-                Content = GetLabelContent(metrics, is_empty)
+                Content = GetLabelContent(metrics, is_cancelled)
             };
 
             grid.Children.Add(label);
@@ -72,14 +73,17 @@ namespace WindowApp
             Grid.SetRow(label, row);
         }
 
-        private static string GetLabelContent(Dictionary<string, object> metrics, bool is_empty)
+        private string GetLabelContent(Dictionary<string, float?>? metrics, bool is_cancelled)
         {
-            if (is_empty)
-                return "<Empty>";
+            if (metrics == null || is_cancelled)
+                return defaultLabel;
 
             var metrics_str = new List<string>();
             foreach (var item in metrics)
-                metrics_str.Add($"{item.Key}: " + $"{item.Value:f3}");
+                if (item.Value == null)
+                    metrics_str.Add(defaultLabel);
+                else
+                    metrics_str.Add($"{item.Key}: " + $"{item.Value:f3}");
 
             return string.Join("\n", metrics_str);
         }

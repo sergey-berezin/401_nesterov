@@ -12,9 +12,11 @@ namespace Server
         private readonly ImagesContext context;
         private readonly AsyncInferenceSession session;
         private readonly MetricsList metrics;
+        private readonly ReusableToken token = new();
 
         public ImageEmbeddingProcessor()
         {
+            ResetToken();
             context = new();
             session = new();
             metrics = new MetricsList(new List<IMetric>
@@ -26,12 +28,11 @@ namespace Server
 
         public async Task<List<int>> ProcessImagesAsync(
             List<ImageDetails> query_images,
-            CancellationToken token,
             IProgress<double>? reporter = null
         )
         {
-            var ids = new List<int>();
-            var tasks = CreateTasks(query_images, token);
+            var ids = context.AddImages(query_images);
+            var tasks = CreateTasks(query_images, token.token);
 
             try
             {
@@ -42,7 +43,7 @@ namespace Server
                 {
                     var embedding = await task;
 
-                    if (token.IsCancellationRequested)
+                    if (token.Cancelled())
                         break;
 
                     progress += step;
@@ -50,9 +51,6 @@ namespace Server
                         reporter.Report(progress);
 
                     context.SaveEmbedding(embedding, image);
-
-                    var img = context.RetrieveImageByHash(image);
-                    ids.Add(img.Id);
                 }
             }
             catch (OperationCanceledException)
@@ -62,7 +60,7 @@ namespace Server
             return ids;
         }
 
-        public Dictionary<string, object>? Compare(Tuple<int, int> ids)
+        public Dictionary<string, float?>? Compare(Tuple<int, int> ids)
         {
             var img1 = context.GetImageById(ids.Item1);
             var img2 = context.GetImageById(ids.Item2);
@@ -78,12 +76,17 @@ namespace Server
                 new PairVectors(embeddings[0], embeddings[1]
             ));
 
-            return metrics_computed.ToDict();
+            return metrics_computed.ToValues();
         }
 
         public async Task<List<ImageDetails>> GetImages()
         {
             return await context.Details.ToListAsync();
+        }
+
+        public void Cancel()
+        {
+            token.Cancel();
         }
 
         public async Task<bool> DeleteImageById(int id)
@@ -112,6 +115,11 @@ namespace Server
                 return true;
             }
             catch { return false; }
+        }
+
+        public void ResetToken()
+        {
+            token.Reset();
         }
 
         private Task<float[]>[] CreateTasks(

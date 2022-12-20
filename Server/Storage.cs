@@ -47,6 +47,29 @@ namespace Server
 
         public ImagesContext() => Database.EnsureCreated();
 
+        public List<int> AddImages(List<ImageDetails> details)
+        {
+            foreach (ImageDetails img_details in details)
+            {
+                if (RetrieveImageByHash(img_details) == null)
+                {
+                    Image newImage = new()
+                    {
+                        Details = img_details,
+                        Embedding = new byte[1],
+                        HasEmbedding = false,
+                        Hash = StorageUtils.Hash(img_details.Data)
+                    };
+
+                    Images.Add(newImage);
+                }
+            }
+
+            SaveChanges();
+
+            return details.Select(x => RetrieveImageByHash(x).Id).ToList();
+        }
+
         public List<float[]> RetrieveEmbeddings(IEnumerable<ImageDetails> query_images)
         {
             var hashes = query_images
@@ -57,7 +80,10 @@ namespace Server
             foreach (var (hash, image) in hashes.Zip(query_images))
             {
                 var q = RetrieveImageByHash(image);
-                retrievedEmbeddings.Add(StorageUtils.ByteToFloat(q?.Embedding));
+                if (q == null || !q.HasEmbedding)
+                    retrievedEmbeddings.Add(null);
+                else
+                    retrievedEmbeddings.Add(StorageUtils.ByteToFloat(q.Embedding));
             }
             return retrievedEmbeddings.ToList();
         }
@@ -72,6 +98,7 @@ namespace Server
                 {
                     Details = details,
                     Embedding = embedding_b,
+                    HasEmbedding = true,
                     Hash = StorageUtils.Hash(details.Data)
                 };
 
@@ -80,6 +107,7 @@ namespace Server
             else if (embedding != null)
             {
                 image.Embedding = embedding_b;
+                image.HasEmbedding = true;
             }
 
             SaveChanges();

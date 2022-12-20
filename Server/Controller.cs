@@ -17,9 +17,10 @@ namespace Server
 
         [HttpPost]
         [Route("images")]
-        public async Task<List<int>> PostImages([FromBody] List<ImageDetails> images, CancellationToken token)
+        public async Task<List<int>> PostImages([FromBody] List<ImageDetails> images, CancellationToken token_post)
         {
-            return await context.ProcessImagesAsync(images, token);
+            context.ResetToken();
+            return await context.ProcessImagesAsync(images);
         }
 
         [HttpGet]
@@ -34,8 +35,24 @@ namespace Server
         }
 
         [HttpGet]
+        [Route("cancel")]
+        public async Task<ActionResult<bool>> Cancel()
+        {
+            try
+            {
+                context.Cancel();
+            } 
+            catch
+            {
+                return StatusCode(404, "Can't cancel operation.");
+            }
+
+            return true;
+        }
+
+        [HttpGet]
         [Route("compare")]
-        public async Task<ActionResult<Dictionary<string, object>>>
+        public async Task<ActionResult<Dictionary<string, float?>>>
             Compare([FromQuery] int id1, [FromQuery] int id2)
         {
             try

@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
-
-using SixLabors.ImageSharp.PixelFormats;
 
 using Contracts;
 
@@ -15,8 +11,9 @@ namespace WindowApp
     public partial class MainWindow : Window
     {
         private List<ImageDetails> imageDetails = new();
-        private readonly ReusableToken token;
+
         private bool calculations_started = false;
+        private bool is_cancelled = false;
         private readonly Service service = new();
 
         private readonly string files_filter = "Images (*.jpg, *.png)|*.jpg;*.png";
@@ -29,7 +26,6 @@ namespace WindowApp
         {
             InitializeComponent();
 
-            token = new ReusableToken();
             embeddingsBar = new ProgressBarReporter(ref pbarEmbeddings);
             pairwiseBar = new ProgressBarReporter(ref pbarPairwise);
             dynamicGrid = new DynamicImagesGrid(ref table);
@@ -61,7 +57,7 @@ namespace WindowApp
 
         public void Clear()
         {
-            token.Reset();
+            is_cancelled = false;
             calculations_started = false;
             embeddingsBar.Reset();
             pairwiseBar.Reset();
@@ -87,15 +83,17 @@ namespace WindowApp
 
             calculations_started = true;
 
-            var ids = await service.ProcessImagesAsync(imageDetails, token.token);
-            if (!token.Cancelled())
+            var ids = await service.ProcessImagesAsync(imageDetails);
+            if (ids == null || ids.Count == 0)
+            {
+                MessageBox.Show("Processing was unsuccessful.");
+                return;
+            }
+
+            if (!is_cancelled)
                 embeddingsBar.Complete();
 
             int n = ids.Count;
-            MessageBox.Show($"n: {n}");
-
-            if (n == 0)
-                return;
 
             double progress = 0.0f;
             double step = 1 / (n * n);
@@ -103,7 +101,6 @@ namespace WindowApp
             {
                 for (int j = 0; j < n; ++j) 
                 {
-                    bool is_cancelled = token.Cancelled();
                     var metrics = await service.Compare(ids[i], ids[j]);
                     dynamicGrid.PutLabel(i + 1, j + 1, metrics, is_cancelled);
 
@@ -115,7 +112,7 @@ namespace WindowApp
                 }
             }
 
-            if (!token.Cancelled())
+            if (!is_cancelled)
                 pairwiseBar.Complete();
         }
 
@@ -124,9 +121,9 @@ namespace WindowApp
             Clear();
         }
 
-        private void ButtonCancel(object sender, RoutedEventArgs e)
+        private async void ButtonCancel(object sender, RoutedEventArgs e)
         {
-            token.Cancel();
+            is_cancelled = await service.Cancel();
         }
 
         private void ButtonOpenDb(object sender, RoutedEventArgs e)

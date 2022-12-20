@@ -4,6 +4,7 @@
     {
         public int Id { get; set; }
         public byte[] Embedding { get; set; }
+        public bool HasEmbedding { get; set; }
         public string Hash { get; set; }
         public ImageDetails Details { get; set; }
     }
