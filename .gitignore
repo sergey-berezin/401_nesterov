@@ -138,3 +138,7 @@ _NCrunch*
 
 # ONNX weights
 *.onnx
+
+# .NET ASP Core files
+wwwroot/
+Pages/
