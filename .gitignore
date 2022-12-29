@@ -142,3 +142,5 @@ _NCrunch*
 # .NET ASP Core files
 wwwroot/
 Pages/
+
+__pycache__/

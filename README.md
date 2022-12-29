@@ -26,3 +26,8 @@ cd Server && dotnet build && dotnet run
 ```
 cd WindowApp && dotnet build && dotnet run
 ```
+
+Также реализован клиент в веб-браузере на python3 с помощью библиотеки streamlit (нужен poetry):
+```
+cd WebApp && poetry install && poetry run startup
+```

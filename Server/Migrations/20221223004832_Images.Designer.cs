@@ -10,7 +10,7 @@ using Server;
 namespace Server.Migrations
 {
     [DbContext(typeof(ImagesContext))]
-    [Migration("20221219231526_Images")]
+    [Migration("20221223004832_Images")]
     partial class Images
     {
         /// <inheritdoc />
